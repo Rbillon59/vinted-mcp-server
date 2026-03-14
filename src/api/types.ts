@@ -67,6 +67,40 @@ export interface VintedItemDetail {
   };
 }
 
+export interface VintedUserItemsResponse {
+  items: VintedItemSummary[];
+  pagination: {
+    current_page: number;
+    total_pages: number;
+    total_entries: number;
+    per_page: number;
+  };
+}
+
+export interface VintedBrand {
+  id: number;
+  title: string;
+  slug: string;
+  favourite_count: number;
+  item_count: number;
+  is_luxury: boolean;
+}
+
+export interface VintedBrandSearchResponse {
+  brands: VintedBrand[];
+}
+
+export interface VintedCatalog {
+  id: number;
+  title: string;
+  code: string;
+  catalogs: VintedCatalog[];
+}
+
+export interface VintedCatalogResponse {
+  catalogs: VintedCatalog[];
+}
+
 export interface VintedUserProfile {
   user: {
     id: number;
