@@ -39,8 +39,15 @@ State-of-the-art MCP (Model Context Protocol) server for Vinted, enabling AI ass
 src/
   index.ts          # Entry point, MCP server setup
   server.ts         # Server configuration and tool registration
-  tools/            # MCP tool implementations
-  api/              # Vinted API client
+  config/
+    auth.ts         # Auth configuration (VINTED_EMAIL / VINTED_PASSWORD)
+  tools/            # MCP tool implementations (search, item, user, user-items, brands, categories, favorite)
+  api/
+    client.ts       # HTTP client (session, cache, rate limit, retry)
+    session-provider.ts        # Anonymous browser session (Cloudflare bypass)
+    auth-session-provider.ts   # Authenticated session via Puppeteer login
+    browser-utils.ts           # Shared Puppeteer/stealth utilities
+    types.ts        # Vinted API response types
   utils/            # Shared utilities (cache, rate-limiter, etc.)
 ```
 
@@ -53,13 +60,17 @@ src/
 
 ## Environment Variables
 - `VINTED_DOMAIN` - Vinted domain to use (default: `www.vinted.fr`)
+- `VINTED_EMAIL` - Vinted account email (optional, enables authenticated tools)
+- `VINTED_PASSWORD` - Vinted account password (required if `VINTED_EMAIL` is set)
+- `PUPPETEER_EXECUTABLE_PATH` - Custom Chrome/Chromium path for Puppeteer (optional)
+- `BROWSER_TIMEOUT_MS` - Timeout for Cloudflare challenge resolution in ms (default: `30000`)
 
 ## Memory (updated each iteration)
 
 ### Current State
-- **Iteration**: 2 (tools & reliability complete)
-- **Status**: Core functionality implemented - 3 tools, caching, rate limiting, retry logic
-- **Next**: Polish & distribution (Docker, README improvements, npx support)
+- **Iteration**: 3 (auth & Cloudflare bypass complete)
+- **Status**: 7 tools (6 read-only + 1 authenticated), Puppeteer-based sessions, Cloudflare bypass
+- **Next**: Cart/bundle features, more authenticated tools
 
 ### Key Decisions
 - Cookie regex uses `_vinted_\w+_session` to support all Vinted domains
@@ -68,9 +79,14 @@ src/
 - Session refresh coalesced via shared promise to prevent stampede
 - In-flight request deduplication prevents thundering herd
 - Response bodies consumed on retry to prevent connection leaks
+- Puppeteer with stealth plugin to bypass Cloudflare challenges
+- Auth via headless browser login (supports two-step email/password flow)
+- Authenticated tools conditionally registered only when credentials are configured
+- 2FA/captcha not supported — login timeout throws explicit error
 
 ### Architecture Notes
 - Singleton VintedClient with built-in caching/rate-limiting
 - Each tool in its own file with `register*Tool(server)` pattern
 - Error handling per-tool (try/catch returning MCP error format)
-- No external dependencies beyond MCP SDK and Zod
+- SessionProvider interface with two implementations: BrowserSessionProvider (anonymous) and AuthenticatedSessionProvider (login)
+- Auth config validated with Zod, cached after first read, frozen for immutability
