@@ -57,6 +57,20 @@ src/
 ## Memory (updated each iteration)
 
 ### Current State
-- **Iteration**: 0 (project initialization)
-- **Status**: Setting up foundation
-- **Next**: Implement core API client and search tool
+- **Iteration**: 2 (tools & reliability complete)
+- **Status**: Core functionality implemented - 3 tools, caching, rate limiting, retry logic
+- **Next**: Polish & distribution (Docker, README improvements, npx support)
+
+### Key Decisions
+- Cookie regex uses `_vinted_\w+_session` to support all Vinted domains
+- Rate limit set conservatively at 10 req/10s to avoid bans
+- Cache TTL 3 minutes, max 200 entries, LRU eviction
+- Session refresh coalesced via shared promise to prevent stampede
+- In-flight request deduplication prevents thundering herd
+- Response bodies consumed on retry to prevent connection leaks
+
+### Architecture Notes
+- Singleton VintedClient with built-in caching/rate-limiting
+- Each tool in its own file with `register*Tool(server)` pattern
+- Error handling per-tool (try/catch returning MCP error format)
+- No external dependencies beyond MCP SDK and Zod
