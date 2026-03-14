@@ -14,19 +14,27 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix"
   },
-  "keywords": ["mcp", "vinted", "model-context-protocol", "ai"],
+  "keywords": [
+    "mcp",
+    "vinted",
+    "model-context-protocol",
+    "ai"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "puppeteer": "^24.39.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.27.0",
     "@types/node": "^22.15.3",
     "eslint": "^9.27.0",
-    "@eslint/js": "^9.27.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1"
   }
