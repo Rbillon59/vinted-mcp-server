@@ -107,11 +107,11 @@ export class VintedClient {
    */
   private async fetchWithRetry(url: string, cookie: string): Promise<Response> {
     let lastError: Error | null = null;
+    let retryDelay = RETRY_BASE_DELAY_MS;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
 
       try {
@@ -140,6 +140,10 @@ export class VintedClient {
           }
 
           // Retry on 429 (rate limited) or 5xx - consume body to free connection
+          const retryAfter = response.headers.get("retry-after");
+          retryDelay = retryAfter
+            ? Math.min(parseInt(retryAfter, 10) * 1000, 30_000)
+            : RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
           await response.body?.cancel();
           lastError = new Error(`Vinted API error: ${response.status} ${response.statusText}`);
           continue;
