@@ -1,13 +1,23 @@
 /**
- * Vinted API HTTP client with session management.
- *
- * Handles cookie-based authentication by fetching a session cookie
- * from the Vinted homepage before making API requests.
+ * Vinted API HTTP client with session management, rate limiting, and caching.
  */
+
+import { TtlCache } from "../utils/cache.js";
+import { RateLimiter } from "../utils/rate-limiter.js";
 
 const DEFAULT_DOMAIN = "www.vinted.fr";
 const SESSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const REQUEST_TIMEOUT_MS = 15_000;
+const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+const MAX_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 1000;
+
+// Rate limit: 10 requests per 10 seconds (conservative to avoid bans)
+const RATE_LIMIT_REQUESTS = 10;
+const RATE_LIMIT_WINDOW_MS = 10_000;
+
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 interface Session {
   cookie: string;
@@ -17,6 +27,10 @@ interface Session {
 export class VintedClient {
   private readonly domain: string;
   private session: Session | null = null;
+  private refreshPromise: Promise<void> | null = null;
+  private readonly cache = new TtlCache<unknown>(CACHE_TTL_MS);
+  private readonly rateLimiter = new RateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_MS);
+  private readonly inflight = new Map<string, Promise<unknown>>();
 
   constructor(domain?: string) {
     this.domain = domain ?? process.env["VINTED_DOMAIN"] ?? DEFAULT_DOMAIN;
@@ -26,10 +40,7 @@ export class VintedClient {
     return `https://${this.domain}`;
   }
 
-  /**
-   * Acquire a fresh session cookie from Vinted's homepage.
-   */
-  private async refreshSession(): Promise<void> {
+  private async doRefreshSession(): Promise<void> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -37,8 +48,7 @@ export class VintedClient {
       const response = await fetch(this.baseUrl, {
         method: "GET",
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "User-Agent": USER_AGENT,
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
         redirect: "manual",
@@ -50,8 +60,8 @@ export class VintedClient {
         throw new Error("No session cookie received from Vinted");
       }
 
-      // Extract the _vinted_fr_session cookie
-      const sessionMatch = setCookie.match(/(_vinted_fr_session=[^;]+)/);
+      // Match any vinted session cookie pattern
+      const sessionMatch = setCookie.match(/(_vinted_\w+_session=[^;]+)/);
       if (!sessionMatch) {
         throw new Error("Session cookie not found in response");
       }
@@ -66,16 +76,22 @@ export class VintedClient {
   }
 
   /**
-   * Check if current session is still valid.
+   * Coalesce concurrent session refreshes into a single request.
    */
+  private async refreshSession(): Promise<void> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.doRefreshSession().finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+    return this.refreshPromise;
+  }
+
   private isSessionValid(): boolean {
     if (!this.session) return false;
     return Date.now() - this.session.fetchedAt < SESSION_TTL_MS;
   }
 
-  /**
-   * Ensure we have a valid session, refreshing if needed.
-   */
   private async ensureSession(): Promise<string> {
     if (!this.isSessionValid()) {
       await this.refreshSession();
@@ -87,11 +103,65 @@ export class VintedClient {
   }
 
   /**
-   * Make an authenticated GET request to the Vinted API.
+   * Fetch with retry logic for transient errors.
+   */
+  private async fetchWithRetry(url: string, cookie: string): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              "User-Agent": USER_AGENT,
+              Accept: "application/json",
+              Cookie: cookie,
+            },
+            signal: controller.signal,
+          });
+
+          // Return 2xx/3xx immediately
+          if (response.ok) {
+            return response;
+          }
+
+          // Don't retry client errors (except 429; auth handled by caller)
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            return response;
+          }
+
+          // Retry on 429 (rate limited) or 5xx - consume body to free connection
+          await response.body?.cancel();
+          lastError = new Error(`Vinted API error: ${response.status} ${response.statusText}`);
+          continue;
+        } finally {
+          clearTimeout(timeout);
+        }
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (error instanceof DOMException && error.name === "AbortError") {
+          lastError = new Error("Request timed out");
+        }
+      }
+    }
+
+    throw lastError ?? new Error("Request failed after retries");
+  }
+
+  /**
+   * Make an authenticated, cached, rate-limited GET request to the Vinted API.
+   * Deduplicates concurrent requests for the same URL.
    */
   async get<T>(path: string, params?: Record<string, string>): Promise<T> {
-    const cookie = await this.ensureSession();
-
     const url = new URL(`/api/v2${path}`, this.baseUrl);
     if (params) {
       for (const [key, value] of Object.entries(params)) {
@@ -101,52 +171,53 @@ export class VintedClient {
       }
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const cacheKey = url.toString();
+
+    // Check cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached as T;
+    }
+
+    // Deduplicate concurrent requests for the same URL
+    const existing = this.inflight.get(cacheKey);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+
+    const promise = this.fetchAndCache<T>(cacheKey);
+    this.inflight.set(cacheKey, promise);
 
     try {
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          Accept: "application/json",
-          Cookie: cookie,
-        },
-        signal: controller.signal,
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        // Session expired, force refresh and retry once
-        this.session = null;
-        const newCookie = await this.ensureSession();
-
-        const retryResponse = await fetch(url.toString(), {
-          method: "GET",
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            Accept: "application/json",
-            Cookie: newCookie,
-          },
-          signal: controller.signal,
-        });
-
-        if (!retryResponse.ok) {
-          throw new Error(`Vinted API error: ${retryResponse.status} ${retryResponse.statusText}`);
-        }
-
-        return (await retryResponse.json()) as T;
-      }
-
-      if (!response.ok) {
-        throw new Error(`Vinted API error: ${response.status} ${response.statusText}`);
-      }
-
-      return (await response.json()) as T;
+      return await promise;
     } finally {
-      clearTimeout(timeout);
+      this.inflight.delete(cacheKey);
     }
+  }
+
+  private async fetchAndCache<T>(cacheKey: string): Promise<T> {
+    // Ensure session before consuming a rate limit token
+    const cookie = await this.ensureSession();
+
+    await this.rateLimiter.acquire();
+
+    let response = await this.fetchWithRetry(cacheKey, cookie);
+
+    // Handle expired session
+    if (response.status === 401 || response.status === 403) {
+      await response.body?.cancel();
+      this.session = null;
+      const newCookie = await this.ensureSession();
+      response = await this.fetchWithRetry(cacheKey, newCookie);
+    }
+
+    if (!response.ok) {
+      throw new Error(`Vinted API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as T;
+    this.cache.set(cacheKey, data);
+    return data;
   }
 }
 
