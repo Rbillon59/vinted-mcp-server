@@ -1,1 +1,155 @@
 # vinted-mcp-server
+
+A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for interacting with the Vinted marketplace. Enables AI assistants to search, browse, and discover second-hand items on Vinted.
+
+## Features
+
+- **Search items** — Full-text search with filters (price, brand, size, color, condition, sort)
+- **Item details** — Full item info including description, photos, seller profile, and condition
+- **User profiles** — Seller ratings, reviews, item counts, and activity
+- **Rate limiting** — Token bucket rate limiter to avoid API bans
+- **Caching** — In-memory LRU cache with TTL for fast repeated queries
+- **Retry logic** — Exponential backoff for transient errors
+- **Session management** — Automatic cookie-based auth with coalesced refresh
+- **Token-efficient** — Concise markdown responses optimized for LLM consumption
+
+## Quick Start
+
+### Prerequisites
+- Node.js 20+
+
+### Install & Build
+
+```bash
+git clone https://github.com/Rbillon59/vinted-mcp-server.git
+cd vinted-mcp-server
+npm install
+npm run build
+```
+
+### Usage with Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "vinted": {
+      "command": "node",
+      "args": ["/absolute/path/to/vinted-mcp-server/dist/index.js"],
+      "env": {
+        "VINTED_DOMAIN": "www.vinted.fr"
+      }
+    }
+  }
+}
+```
+
+### Usage with Cursor
+
+Add to `.cursor/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "vinted": {
+      "command": "node",
+      "args": ["/absolute/path/to/vinted-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Usage with Docker
+
+```bash
+docker build -t vinted-mcp-server .
+docker run -i --rm -e VINTED_DOMAIN=www.vinted.fr vinted-mcp-server
+```
+
+## Available Tools
+
+### `search_items`
+Search the Vinted catalog with filters.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | *(required)* | Search text (e.g., "nike air max", "robe vintage") |
+| `page` | number | 1 | Page number |
+| `per_page` | number | 20 | Results per page (max: 96) |
+| `order` | string | "relevance" | Sort: `relevance`, `price_low_to_high`, `price_high_to_low`, `newest_first` |
+| `price_from` | number | — | Minimum price filter |
+| `price_to` | number | — | Maximum price filter |
+| `brand_ids` | string | — | Brand IDs (comma-separated) |
+| `size_ids` | string | — | Size IDs (comma-separated) |
+| `color_ids` | string | — | Color IDs (comma-separated) |
+| `catalog_ids` | string | — | Category IDs (comma-separated) |
+| `status_ids` | string | — | Condition: `6`=New with tags, `1`=New, `2`=Very good, `3`=Good, `4`=Satisfactory |
+
+### `get_item_details`
+Get detailed information about a specific item.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `item_id` | number | The Vinted item ID (from search results) |
+
+Returns: title, price, description, brand, size, condition, colors, seller info (rating, location), photos, stats (views, favorites).
+
+### `get_user_profile`
+Get a seller's profile information.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `user_id` | number | The Vinted user ID (from search results or item details) |
+
+Returns: username, rating, review breakdown, items listed/sold, location, member since, last active.
+
+## Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `VINTED_DOMAIN` | `www.vinted.fr` | Vinted domain (e.g., `www.vinted.de`, `www.vinted.es`, `www.vinted.it`) |
+
+### Supported Domains
+| Domain | Country |
+|--------|---------|
+| `www.vinted.fr` | France |
+| `www.vinted.de` | Germany |
+| `www.vinted.es` | Spain |
+| `www.vinted.it` | Italy |
+| `www.vinted.nl` | Netherlands |
+| `www.vinted.be` | Belgium |
+| `www.vinted.pl` | Poland |
+| `www.vinted.pt` | Portugal |
+| `www.vinted.lt` | Lithuania |
+| `www.vinted.cz` | Czech Republic |
+| `www.vinted.co.uk` | United Kingdom |
+
+## Architecture
+
+```
+src/
+  index.ts              # Entry point, stdio transport
+  server.ts             # MCP server config & tool registration
+  tools/
+    search.ts           # search_items tool
+    item.ts             # get_item_details tool
+    user.ts             # get_user_profile tool
+  api/
+    client.ts           # HTTP client (session, cache, rate limit, retry)
+    types.ts            # Vinted API response types
+  utils/
+    cache.ts            # TTL cache with LRU eviction
+    rate-limiter.ts     # Token bucket rate limiter
+```
+
+### Reliability Features
+- **Rate limiting**: Token bucket (10 req/10s) prevents API bans
+- **Caching**: LRU cache (3min TTL, 200 entries max) reduces redundant requests
+- **Retry**: Exponential backoff (1s, 2s) on 429/5xx errors
+- **Session recovery**: Automatic cookie refresh on 401/403 with request coalescing
+- **Request deduplication**: Concurrent identical requests share a single API call
+
+## License
+
+MIT

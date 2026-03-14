@@ -1,0 +1,33 @@
+{
+  "name": "vinted-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for interacting with the Vinted marketplace",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "vinted-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
+  },
+  "keywords": ["mcp", "vinted", "model-context-protocol", "ai"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "eslint": "^9.27.0",
+    "@eslint/js": "^9.27.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1"
+  }
+}
