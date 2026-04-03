@@ -1,5 +1,7 @@
 # vinted-mcp-server
 
+[![CI](https://github.com/Rbillon59/vinted-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/Rbillon59/vinted-mcp-server/actions/workflows/ci.yml)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for interacting with the Vinted marketplace. Enables AI assistants to search, browse, and discover second-hand items on Vinted.
 
 ## Features
@@ -22,7 +24,13 @@ A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for int
 ### Prerequisites
 - Node.js 20+
 
-### Install & Build
+### Using npx (zero-install)
+
+```bash
+npx vinted-mcp-server
+```
+
+### Install from source
 
 ```bash
 git clone https://github.com/Rbillon59/vinted-mcp-server.git
@@ -53,6 +61,24 @@ Add to your `claude_desktop_config.json`:
 
 > `VINTED_EMAIL` and `VINTED_PASSWORD` are optional. Without them, only read-only tools are available. With them, authenticated tools (favorites) are also enabled.
 
+### Usage with Claude Code CLI
+
+Add to your Claude Code settings (`~/.claude/settings.json` or project `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "vinted": {
+      "command": "npx",
+      "args": ["vinted-mcp-server"],
+      "env": {
+        "VINTED_DOMAIN": "www.vinted.fr"
+      }
+    }
+  }
+}
+```
+
 ### Usage with Cursor
 
 Add to `.cursor/mcp.json` in your project:
@@ -61,8 +87,8 @@ Add to `.cursor/mcp.json` in your project:
 {
   "mcpServers": {
     "vinted": {
-      "command": "node",
-      "args": ["/absolute/path/to/vinted-mcp-server/dist/index.js"]
+      "command": "npx",
+      "args": ["vinted-mcp-server"]
     }
   }
 }
