@@ -48,7 +48,7 @@ src/
     auth-session-provider.ts   # Authenticated session via Puppeteer login
     browser-utils.ts           # Shared Puppeteer/stealth utilities
     types.ts        # Vinted API response types
-  utils/            # Shared utilities (cache, rate-limiter, etc.)
+  utils/            # Shared utilities (cache, rate-limiter, mcp-error)
 ```
 
 ## Commands
@@ -68,9 +68,9 @@ src/
 ## Memory (updated each iteration)
 
 ### Current State
-- **Iteration**: 3 (auth & Cloudflare bypass complete)
-- **Status**: 7 tools (6 read-only + 1 authenticated), Puppeteer-based sessions, Cloudflare bypass
-- **Next**: Cart/bundle features, more authenticated tools
+- **Iteration**: 4 (API hardening & HTML scraping complete)
+- **Status**: 7 tools (6 read-only + 1 authenticated), Puppeteer-based sessions, Cloudflare bypass, HTML scraping for item details
+- **Next**: Polish & distribution (README, Docker, npx, CI/CD)
 
 ### Key Decisions
 - Cookie regex uses `_vinted_\w+_session` to support all Vinted domains
@@ -83,10 +83,15 @@ src/
 - Auth via headless browser login (supports two-step email/password flow)
 - Authenticated tools conditionally registered only when credentials are configured
 - 2FA/captcha not supported — login timeout throws explicit error
+- Item details fetched via HTML scraping (JSON-LD + RSC plugins) — Vinted JSON API returns 403
+- Wardrobe endpoint `/wardrobe/{id}/items` used instead of `/users/{id}/items`
+- Shared `mcpError()` utility for consistent error responses across all tools
+- `formatPrice()` handles both `string` and `{amount, currency_code}` price formats
 
 ### Architecture Notes
 - Singleton VintedClient with built-in caching/rate-limiting
 - Each tool in its own file with `register*Tool(server)` pattern
-- Error handling per-tool (try/catch returning MCP error format)
+- Shared `mcpError()` utility replaces per-tool error boilerplate
+- `getHtml()` on VintedClient for page scraping with same session/cache/retry guarantees as JSON API
 - SessionProvider interface with two implementations: BrowserSessionProvider (anonymous) and AuthenticatedSessionProvider (login)
 - Auth config validated with Zod, cached after first read, frozen for immutability

@@ -27,7 +27,28 @@ Provide a seamless, secure, and efficient MCP interface to Vinted, enabling AI a
 - [x] Request deduplication (thundering herd prevention)
 - [x] Connection leak prevention (body consumption on retry)
 
-### Iteration 3: Polish & Distribution (next)
+### Iteration 3: Auth & Cloudflare Bypass ✅
+- [x] Puppeteer with stealth plugin to bypass Cloudflare challenges
+- [x] Anonymous browser session provider (BrowserSessionProvider)
+- [x] Authenticated session via headless browser login (AuthenticatedSessionProvider)
+- [x] Shared Puppeteer/stealth utilities (browser-utils.ts)
+- [x] Auth config with Zod validation (VINTED_EMAIL / VINTED_PASSWORD)
+- [x] `add_favorite` authenticated tool (conditionally registered)
+- [x] `get_user_items` tool — browse user wardrobes
+- [x] `search_brands` tool — brand lookup
+- [x] `get_categories` tool — category tree
+
+### Iteration 4: API Hardening & Scraping ✅
+- [x] HTML scraping for `get_item_details` (JSON API unavailable, replaced with JSON-LD + RSC plugin extraction)
+- [x] `getHtml()` method on VintedClient with caching, rate limiting, retry, and session recovery
+- [x] `mcpError()` shared utility — DRY error handling across all 7 tools
+- [x] `formatPrice()` utility for flexible price formats (`string | VintedPrice`)
+- [x] Wardrobe endpoint fix (`/wardrobe/{id}/items` replaces `/users/{id}/items`)
+- [x] API headers hardening (Referer, Origin added to all requests)
+- [x] Unified `VintedSearchResponse` type (removed `VintedUserItemsResponse` and `VintedItemDetail`)
+- [x] Cache cleanup on `destroy()`
+
+### Iteration 5: Polish & Distribution (next)
 - [ ] Comprehensive README with setup instructions
 - [ ] MCP client configuration examples (Claude Desktop, Cursor, etc.)
 - [ ] Dockerfile for containerized deployment
@@ -39,14 +60,21 @@ Provide a seamless, secure, and efficient MCP interface to Vinted, enabling AI a
 - [ ] Structured error codes for better LLM understanding
 - [ ] Webhook/notification support
 - [ ] Price history tracking
+- [ ] Cart/bundle features
+- [ ] More authenticated tools
 
 ## Feature Priority Matrix
 | Feature | User Impact | Complexity | Priority | Status |
 |---------|------------|------------|----------|--------|
 | Search items | Very High | Medium | P0 | ✅ Done |
-| Item details | High | Low | P0 | ✅ Done |
+| Item details | High | Medium | P0 | ✅ Done (HTML scraping) |
 | User profiles | Medium | Low | P1 | ✅ Done |
 | Advanced filters | High | Medium | P1 | ✅ Done |
 | Rate limiting | High (reliability) | Low | P1 | ✅ Done |
 | Caching | Medium | Medium | P2 | ✅ Done |
+| Cloudflare bypass | High (reliability) | High | P1 | ✅ Done |
+| Auth & favorites | Medium | High | P2 | ✅ Done |
+| User wardrobe | Medium | Low | P1 | ✅ Done |
+| Brand search | Low | Low | P2 | ✅ Done |
+| Categories | Low | Low | P2 | ✅ Done |
 | Docker | Medium | Low | P2 | Planned |
