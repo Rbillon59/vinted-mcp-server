@@ -25,9 +25,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for int
 
 ### Using npx (zero-install)
 
-```bash
-npx vinted-mcp-server
-```
+This server communicates via **stdio** (JSON-RPC) and is designed to be launched by an MCP client, not run directly in a terminal. Configure it in your MCP client as shown below.
 
 ### Install from source
 
@@ -46,6 +44,23 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "vinted": {
+      "command": "npx",
+      "args": ["vinted-mcp-server"],
+      "env": {
+        "VINTED_DOMAIN": "www.vinted.fr"
+      }
+    }
+  }
+}
+```
+
+<details>
+<summary>Alternative: using a local build</summary>
+
+```json
+{
+  "mcpServers": {
+    "vinted": {
       "command": "node",
       "args": ["/absolute/path/to/vinted-mcp-server/dist/index.js"],
       "env": {
@@ -55,6 +70,7 @@ Add to your `claude_desktop_config.json`:
   }
 }
 ```
+</details>
 
 ### Usage with Claude Code CLI
 
