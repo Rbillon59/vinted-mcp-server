@@ -1,5 +1,5 @@
 {
-  "name": "vinted-mcp-server",
+  "name": "@rbillon59/vinted-mcp-server",
   "version": "0.1.0",
   "description": "MCP server for interacting with the Vinted marketplace",
   "type": "module",

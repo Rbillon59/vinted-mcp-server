@@ -45,7 +45,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "vinted": {
       "command": "npx",
-      "args": ["vinted-mcp-server"],
+      "args": ["@rbillon59/vinted-mcp-server"],
       "env": {
         "VINTED_DOMAIN": "www.vinted.fr"
       }
@@ -81,7 +81,7 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project `.mcp.jso
   "mcpServers": {
     "vinted": {
       "command": "npx",
-      "args": ["vinted-mcp-server"],
+      "args": ["@rbillon59/vinted-mcp-server"],
       "env": {
         "VINTED_DOMAIN": "www.vinted.fr"
       }
@@ -99,7 +99,7 @@ Add to `.cursor/mcp.json` in your project:
   "mcpServers": {
     "vinted": {
       "command": "npx",
-      "args": ["vinted-mcp-server"]
+      "args": ["@rbillon59/vinted-mcp-server"]
     }
   }
 }
