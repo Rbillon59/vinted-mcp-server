@@ -10,13 +10,22 @@ export interface VintedPhoto {
   is_main: boolean;
 }
 
+export interface VintedPrice {
+  amount: string;
+  currency_code: string;
+}
+
 export interface VintedItemSummary {
   id: number;
   title: string;
-  price: string;
-  currency: string;
-  brand_title: string;
-  size_title: string;
+  price: string | VintedPrice;
+  currency?: string;
+  brand_title?: string;
+  size_title?: string;
+  /** Wardrobe endpoint uses `brand` instead of `brand_title`. */
+  brand?: string;
+  /** Wardrobe endpoint uses `size` instead of `size_title`. */
+  size?: string;
   url: string;
   photo: VintedPhoto | null;
   favourite_count: number;
@@ -27,47 +36,15 @@ export interface VintedItemSummary {
   };
 }
 
+/** Extract displayable price string from either format. */
+export function formatPrice(price: string | VintedPrice, currency?: string): string {
+  if (typeof price === "string") {
+    return currency ? `${price} ${currency}` : price;
+  }
+  return `${price.amount} ${price.currency_code}`;
+}
+
 export interface VintedSearchResponse {
-  items: VintedItemSummary[];
-  pagination: {
-    current_page: number;
-    total_pages: number;
-    total_entries: number;
-    per_page: number;
-  };
-}
-
-export interface VintedItemDetail {
-  item: {
-    id: number;
-    title: string;
-    description: string;
-    price: string;
-    currency: string;
-    brand_title: string;
-    size_title: string;
-    status: string;
-    condition: string;
-    url: string;
-    photos: VintedPhoto[];
-    favourite_count: number;
-    view_count: number;
-    created_at_ts: string;
-    color1: string;
-    color2: string;
-    package_size_id: number;
-    user: {
-      id: number;
-      login: string;
-      feedback_reputation: number;
-      feedback_count: number;
-      city: string;
-      country_title: string;
-    };
-  };
-}
-
-export interface VintedUserItemsResponse {
   items: VintedItemSummary[];
   pagination: {
     current_page: number;

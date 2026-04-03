@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getClient } from "../api/client.js";
 import type { VintedCatalog, VintedCatalogResponse } from "../api/types.js";
+import { mcpError } from "../utils/mcp-error.js";
 
 function formatCatalogs(catalogs: VintedCatalog[], depth: number = 0): string {
   const lines: string[] = [];
@@ -30,11 +31,7 @@ export function registerCategoriesTool(server: McpServer): void {
           content: [{ type: "text" as const, text }],
         };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: "text" as const, text: `Failed to get categories: ${message}` }],
-          isError: true,
-        };
+        return mcpError("Failed to get categories", error);
       }
     }
   );

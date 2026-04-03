@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../api/client.js";
 import type { VintedBrandSearchResponse } from "../api/types.js";
+import { mcpError } from "../utils/mcp-error.js";
 
 function formatBrands(data: VintedBrandSearchResponse, query: string): string {
   if (data.brands.length === 0) {
@@ -38,11 +39,7 @@ export function registerBrandsTool(server: McpServer): void {
           content: [{ type: "text" as const, text }],
         };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: "text" as const, text: `Failed to search brands: ${message}` }],
-          isError: true,
-        };
+        return mcpError("Failed to search brands", error);
       }
     }
   );

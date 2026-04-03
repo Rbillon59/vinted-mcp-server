@@ -1,12 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../api/client.js";
-import type { VintedSearchResponse } from "../api/types.js";
+import { type VintedSearchResponse, formatPrice } from "../api/types.js";
+import { mcpError } from "../utils/mcp-error.js";
 
-/**
- * Format search results for concise LLM consumption.
- * Keeps output token-efficient while being informative.
- */
 function formatSearchResults(data: VintedSearchResponse): string {
   if (data.items.length === 0) {
     return "No items found matching your search criteria.";
@@ -16,12 +13,13 @@ function formatSearchResults(data: VintedSearchResponse): string {
   const header = `Found ${pagination.total_entries} items (page ${pagination.current_page}/${pagination.total_pages}):\n`;
 
   const items = data.items.map((item) => {
+    const price = formatPrice(item.price, item.currency);
     const parts = [
-      `- **${item.title}** — ${item.price} ${item.currency}`,
+      `- **${item.title}** — ${price}`,
     ];
     if (item.brand_title) parts[0] += ` | ${item.brand_title}`;
     if (item.size_title) parts[0] += ` | Size: ${item.size_title}`;
-    parts.push(`  Seller: ${item.user.login} | ❤ ${item.favourite_count} | 👁 ${item.view_count}`);
+    parts.push(`  Seller: ${item.user.login} (ID: ${item.user.id}) | ❤ ${item.favourite_count} | 👁 ${item.view_count}`);
     parts.push(`  ${item.url}`);
     parts.push(`  ID: ${item.id}`);
     return parts.join("\n");
@@ -49,18 +47,11 @@ export function registerSearchTool(server: McpServer): void {
     },
     async (params) => {
       try {
-        const orderMap: Record<string, string> = {
-          relevance: "relevance",
-          price_low_to_high: "price_low_to_high",
-          price_high_to_low: "price_high_to_low",
-          newest_first: "newest_first",
-        };
-
         const queryParams: Record<string, string> = {
           search_text: params.query,
           page: String(params.page),
           per_page: String(params.per_page),
-          order: orderMap[params.order] ?? "relevance",
+          order: params.order,
         };
 
         if (params.price_from !== undefined) queryParams["price_from"] = String(params.price_from);
@@ -78,12 +69,8 @@ export function registerSearchTool(server: McpServer): void {
           content: [{ type: "text" as const, text }],
         };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: "text" as const, text: `Search failed: ${message}` }],
-          isError: true,
-        };
+        return mcpError("Search failed", error);
       }
-    }
+    },
   );
 }

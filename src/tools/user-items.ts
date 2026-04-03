@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../api/client.js";
-import type { VintedUserItemsResponse } from "../api/types.js";
+import { type VintedSearchResponse, formatPrice } from "../api/types.js";
+import { mcpError } from "../utils/mcp-error.js";
 
-function formatUserItems(data: VintedUserItemsResponse, userId: number): string {
+function formatUserItems(data: VintedSearchResponse, userId: number): string {
   if (data.items.length === 0) {
     return `User ${userId} has no items listed.`;
   }
@@ -12,11 +13,14 @@ function formatUserItems(data: VintedUserItemsResponse, userId: number): string 
   const header = `User ${userId} — ${pagination.total_entries} items (page ${pagination.current_page}/${pagination.total_pages}):\n`;
 
   const items = data.items.map((item) => {
+    const price = formatPrice(item.price, item.currency);
+    const brand = item.brand_title ?? item.brand ?? "";
+    const size = item.size_title ?? item.size ?? "";
     const parts = [
-      `- **${item.title}** — ${item.price} ${item.currency}`,
+      `- **${item.title}** — ${price}`,
     ];
-    if (item.brand_title) parts[0] += ` | ${item.brand_title}`;
-    if (item.size_title) parts[0] += ` | Size: ${item.size_title}`;
+    if (brand) parts[0] += ` | ${brand}`;
+    if (size) parts[0] += ` | Size: ${size}`;
     parts.push(`  ID: ${item.id} | ${item.url}`);
     return parts.join("\n");
   });
@@ -36,8 +40,8 @@ export function registerUserItemsTool(server: McpServer): void {
     },
     async (params) => {
       try {
-        const data = await getClient().get<VintedUserItemsResponse>(
-          `/users/${params.user_id}/items`,
+        const data = await getClient().get<VintedSearchResponse>(
+          `/wardrobe/${params.user_id}/items`,
           {
             page: String(params.page),
             per_page: String(params.per_page),
@@ -50,12 +54,8 @@ export function registerUserItemsTool(server: McpServer): void {
           content: [{ type: "text" as const, text }],
         };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: "text" as const, text: `Failed to get user items: ${message}` }],
-          isError: true,
-        };
+        return mcpError("Failed to get user items", error);
       }
-    }
+    },
   );
 }

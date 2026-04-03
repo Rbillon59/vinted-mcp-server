@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../api/client.js";
+import { mcpError } from "../utils/mcp-error.js";
 
 export function registerFavoriteTool(server: McpServer): void {
   server.tool(
@@ -33,11 +34,7 @@ export function registerFavoriteTool(server: McpServer): void {
           content: [{ type: "text" as const, text: `Item ${params.item_id} added to favorites.` }],
         };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: "text" as const, text: `Failed to update favorite: ${message}` }],
-          isError: true,
-        };
+        return mcpError("Failed to update favorite", error);
       }
     }
   );

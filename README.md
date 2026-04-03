@@ -197,6 +197,7 @@ src/
   utils/
     cache.ts            # TTL cache with LRU eviction
     rate-limiter.ts     # Token bucket rate limiter
+    mcp-error.ts        # Shared MCP error response builder
 ```
 
 ### Reliability Features

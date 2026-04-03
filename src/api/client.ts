@@ -19,7 +19,7 @@ const RETRY_BASE_DELAY_MS = 1000;
 const RATE_LIMIT_REQUESTS = 10;
 const RATE_LIMIT_WINDOW_MS = 10_000;
 
-const USER_AGENT =
+export const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
@@ -51,7 +51,7 @@ export class VintedClient {
       : null;
   }
 
-  private get baseUrl(): string {
+  get baseUrl(): string {
     return `https://${this.domain}`;
   }
 
@@ -145,8 +145,10 @@ export class VintedClient {
         try {
           const headers: Record<string, string> = {
             "User-Agent": USER_AGENT,
-            Accept: "application/json",
+            Accept: "application/json, text/plain, */*",
             Cookie: cookie,
+            Referer: `https://${this.domain}/`,
+            Origin: `https://${this.domain}`,
           };
 
           if (body !== undefined) {
@@ -307,6 +309,39 @@ export class VintedClient {
   }
 
   /**
+   * Fetch an HTML page with session, rate limiting, and retry.
+   * Used for scraping item detail pages where the JSON API is unavailable.
+   */
+  async getHtml(url: string): Promise<string> {
+    const cacheKey = `html:${url}`;
+
+    const cached = this.cache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached as string;
+    }
+
+    const cookie = await this.ensureSession();
+    await this.rateLimiter.acquire();
+
+    let response = await this.fetchWithRetry(url, cookie);
+
+    if (response.status === 401 || response.status === 403) {
+      await response.body?.cancel();
+      this.session = null;
+      const newCookie = await this.ensureSession();
+      response = await this.fetchWithRetry(url, newCookie);
+    }
+
+    if (!response.ok) {
+      throw new Error(`Vinted page error: ${response.status} ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    this.cache.set(cacheKey, html);
+    return html;
+  }
+
+  /**
    * Check whether authenticated operations are available.
    */
   get isAuthenticated(): boolean {
@@ -317,6 +352,7 @@ export class VintedClient {
    * Release browser resources held by session providers.
    */
   async destroy(): Promise<void> {
+    this.cache.destroy();
     await this.sessionProvider.destroy();
     await this.authSessionProvider?.destroy();
   }
