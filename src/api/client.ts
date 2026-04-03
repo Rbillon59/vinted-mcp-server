@@ -5,8 +5,7 @@
 import { TtlCache } from "../utils/cache.js";
 import { RateLimiter } from "../utils/rate-limiter.js";
 import { type SessionProvider, createSessionProvider } from "./session-provider.js";
-import { AuthenticatedSessionProvider } from "./auth-session-provider.js";
-import { getAuthConfig } from "../config/auth.js";
+
 
 const DEFAULT_DOMAIN = "www.vinted.fr";
 const SESSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -33,22 +32,14 @@ export class VintedClient {
   private readonly domain: string;
   private session: Session | null = null;
   private refreshPromise: Promise<void> | null = null;
-  private authSession: Session | null = null;
-  private authRefreshPromise: Promise<void> | null = null;
   private readonly cache = new TtlCache<unknown>(CACHE_TTL_MS);
   private readonly rateLimiter = new RateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_MS);
   private readonly inflight = new Map<string, Promise<unknown>>();
   private readonly sessionProvider: SessionProvider;
-  private readonly authSessionProvider: SessionProvider | null;
 
   constructor(domain?: string, sessionProvider?: SessionProvider) {
     this.domain = domain ?? process.env["VINTED_DOMAIN"] ?? DEFAULT_DOMAIN;
     this.sessionProvider = sessionProvider ?? createSessionProvider();
-
-    const authConfig = getAuthConfig();
-    this.authSessionProvider = authConfig
-      ? new AuthenticatedSessionProvider(authConfig)
-      : null;
   }
 
   get baseUrl(): string {
@@ -84,41 +75,6 @@ export class VintedClient {
       throw new Error("Failed to establish Vinted session");
     }
     return this.session.cookie;
-  }
-
-  // ── Authenticated session management ──
-
-  private async doRefreshAuthSession(): Promise<void> {
-    if (!this.authSessionProvider) {
-      throw new Error(
-        "Authentication required. Set VINTED_EMAIL and VINTED_PASSWORD environment variables."
-      );
-    }
-    this.authSession = await this.authSessionProvider.refreshSession(this.domain);
-  }
-
-  private async refreshAuthSession(): Promise<void> {
-    if (!this.authRefreshPromise) {
-      this.authRefreshPromise = this.doRefreshAuthSession().finally(() => {
-        this.authRefreshPromise = null;
-      });
-    }
-    return this.authRefreshPromise;
-  }
-
-  private isAuthSessionValid(): boolean {
-    if (!this.authSession) return false;
-    return Date.now() - this.authSession.fetchedAt < SESSION_TTL_MS;
-  }
-
-  private async ensureAuthSession(): Promise<string> {
-    if (!this.isAuthSessionValid()) {
-      await this.refreshAuthSession();
-    }
-    if (!this.authSession) {
-      throw new Error("Failed to establish authenticated Vinted session");
-    }
-    return this.authSession.cookie;
   }
 
   /**
@@ -257,57 +213,6 @@ export class VintedClient {
     return data;
   }
 
-  // ── Authenticated write operations ──
-
-  /**
-   * Make an authenticated POST request to the Vinted API.
-   * Requires VINTED_EMAIL and VINTED_PASSWORD to be configured.
-   */
-  async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    return this.mutate<T>("POST", path, body);
-  }
-
-  /**
-   * Make an authenticated PUT request to the Vinted API.
-   */
-  async put<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    return this.mutate<T>("PUT", path, body);
-  }
-
-  /**
-   * Make an authenticated DELETE request to the Vinted API.
-   */
-  async del<T>(path: string): Promise<T> {
-    return this.mutate<T>("DELETE", path);
-  }
-
-  private async mutate<T>(
-    method: HttpMethod,
-    path: string,
-    body?: Record<string, unknown>,
-  ): Promise<T> {
-    const url = new URL(`/api/v2${path}`, this.baseUrl).toString();
-    const cookie = await this.ensureAuthSession();
-
-    await this.rateLimiter.acquire();
-
-    let response = await this.fetchWithRetry(url, cookie, method, body);
-
-    // Handle expired auth session
-    if (response.status === 401 || response.status === 403) {
-      await response.body?.cancel();
-      this.authSession = null;
-      const newCookie = await this.ensureAuthSession();
-      response = await this.fetchWithRetry(url, newCookie, method, body);
-    }
-
-    if (!response.ok) {
-      throw new Error(`Vinted API error: ${response.status} ${response.statusText}`);
-    }
-
-    return (await response.json()) as T;
-  }
-
   /**
    * Fetch an HTML page with session, rate limiting, and retry.
    * Used for scraping item detail pages where the JSON API is unavailable.
@@ -342,19 +247,11 @@ export class VintedClient {
   }
 
   /**
-   * Check whether authenticated operations are available.
-   */
-  get isAuthenticated(): boolean {
-    return this.authSessionProvider !== null;
-  }
-
-  /**
    * Release browser resources held by session providers.
    */
   async destroy(): Promise<void> {
     this.cache.destroy();
     await this.sessionProvider.destroy();
-    await this.authSessionProvider?.destroy();
   }
 }
 

@@ -12,11 +12,10 @@ A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for int
 - **User items** — Browse all items listed by a specific user
 - **Brand search** — Find brand IDs for use in search filters
 - **Categories** — Browse the Vinted category tree
-- **Favorites** — Add/remove items from your favorites (requires authentication)
 - **Rate limiting** — Token bucket rate limiter to avoid API bans
 - **Caching** — In-memory LRU cache with TTL for fast repeated queries
 - **Retry logic** — Exponential backoff for transient errors
-- **Session management** — Puppeteer-based with Cloudflare bypass and optional authenticated login
+- **Session management** — Puppeteer-based with Cloudflare bypass
 - **Token-efficient** — Concise markdown responses optimized for LLM consumption
 
 ## Quick Start
@@ -50,16 +49,12 @@ Add to your `claude_desktop_config.json`:
       "command": "node",
       "args": ["/absolute/path/to/vinted-mcp-server/dist/index.js"],
       "env": {
-        "VINTED_DOMAIN": "www.vinted.fr",
-        "VINTED_EMAIL": "your-email@example.com",
-        "VINTED_PASSWORD": "your-password"
+        "VINTED_DOMAIN": "www.vinted.fr"
       }
     }
   }
 }
 ```
-
-> `VINTED_EMAIL` and `VINTED_PASSWORD` are optional. Without them, only read-only tools are available. With them, authenticated tools (favorites) are also enabled.
 
 ### Usage with Claude Code CLI
 
@@ -161,27 +156,13 @@ Browse the Vinted category tree.
 |-----------|------|-------------|
 | `parent_id` | number | *(optional)* Parent category ID to list children of |
 
-### `favorite_item` *(requires authentication)*
-Add or remove an item from your Vinted favorites.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `item_id` | number | *(required)* | The Vinted item ID |
-| `undo` | boolean | false | Set to true to remove from favorites |
-
-> This tool is only available when `VINTED_EMAIL` and `VINTED_PASSWORD` are configured.
-
 ## Configuration
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
 | `VINTED_DOMAIN` | `www.vinted.fr` | Vinted domain (e.g., `www.vinted.de`, `www.vinted.es`, `www.vinted.it`) |
-| `VINTED_EMAIL` | — | Vinted account email (enables authenticated tools) |
-| `VINTED_PASSWORD` | — | Vinted account password (required if `VINTED_EMAIL` is set) |
 | `PUPPETEER_EXECUTABLE_PATH` | — | Custom Chrome/Chromium path for Puppeteer |
 | `BROWSER_TIMEOUT_MS` | `30000` | Timeout for Cloudflare challenge resolution (ms) |
-
-> **Note:** `VINTED_EMAIL` and `VINTED_PASSWORD` must be set together. Setting only one will cause an error at startup.
 
 ### Supported Domains
 | Domain | Country |
@@ -204,8 +185,6 @@ Add or remove an item from your Vinted favorites.
 src/
   index.ts              # Entry point, stdio transport
   server.ts             # MCP server config & tool registration
-  config/
-    auth.ts             # Auth configuration (VINTED_EMAIL / VINTED_PASSWORD)
   tools/
     search.ts           # search_items tool
     item.ts             # get_item_details tool
@@ -213,11 +192,9 @@ src/
     user-items.ts       # get_user_items tool
     brands.ts           # search_brands tool
     categories.ts       # get_categories tool
-    favorite.ts         # favorite_item tool (authenticated)
   api/
     client.ts           # HTTP client (session, cache, rate limit, retry)
-    session-provider.ts # Browser-based anonymous session (Cloudflare bypass)
-    auth-session-provider.ts # Authenticated session via Puppeteer login
+    session-provider.ts # Browser-based session (Cloudflare bypass)
     browser-utils.ts    # Shared Puppeteer/stealth utilities
     types.ts            # Vinted API response types
   utils/
@@ -233,7 +210,6 @@ src/
 - **Session recovery**: Automatic cookie refresh on 401/403 with request coalescing
 - **Request deduplication**: Concurrent identical requests share a single API call
 - **Cloudflare bypass**: Puppeteer with stealth plugin for session acquisition
-- **Authenticated sessions**: Optional login via headless browser for write operations
 
 ## License
 

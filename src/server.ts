@@ -5,8 +5,7 @@ import { registerUserTool } from "./tools/user.js";
 import { registerUserItemsTool } from "./tools/user-items.js";
 import { registerBrandsTool } from "./tools/brands.js";
 import { registerCategoriesTool } from "./tools/categories.js";
-import { registerFavoriteTool } from "./tools/favorite.js";
-import { isAuthEnabled } from "./config/auth.js";
+
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -21,11 +20,6 @@ export function createServer(): McpServer {
   registerUserItemsTool(server);
   registerBrandsTool(server);
   registerCategoriesTool(server);
-
-  // Authenticated tools (require VINTED_EMAIL + VINTED_PASSWORD)
-  if (isAuthEnabled()) {
-    registerFavoriteTool(server);
-  }
 
   return server;
 }

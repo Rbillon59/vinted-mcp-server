@@ -25,7 +25,7 @@ State-of-the-art MCP (Model Context Protocol) server for Vinted, enabling AI ass
 3. **Error Handling**: Graceful degradation, meaningful error messages, retry logic
 4. **Reliability**: Circuit breaker patterns, timeout management, session recovery
 5. **Performance**: Response caching, connection reuse, lazy loading
-6. **Impact**: Prioritize features users need most (search > details > favorites)
+6. **Impact**: Prioritize features users need most (search > details > profiles)
 
 ### Code Standards
 - Strict TypeScript, no `any` types
@@ -39,15 +39,12 @@ State-of-the-art MCP (Model Context Protocol) server for Vinted, enabling AI ass
 src/
   index.ts          # Entry point, MCP server setup
   server.ts         # Server configuration and tool registration
-  config/
-    auth.ts         # Auth configuration (VINTED_EMAIL / VINTED_PASSWORD)
-  tools/            # MCP tool implementations (search, item, user, user-items, brands, categories, favorite)
+  tools/            # MCP tool implementations (search, item, user, user-items, brands, categories)
   api/
     client.ts       # HTTP client (session, cache, rate limit, retry)
-    session-provider.ts        # Anonymous browser session (Cloudflare bypass)
-    auth-session-provider.ts   # Authenticated session via Puppeteer login
-    browser-utils.ts           # Shared Puppeteer/stealth utilities
-    types.ts        # Vinted API response types
+    session-provider.ts  # Browser-based session (Cloudflare bypass)
+    browser-utils.ts     # Shared Puppeteer/stealth utilities
+    types.ts             # Vinted API response types
   utils/            # Shared utilities (cache, rate-limiter, mcp-error)
 ```
 
@@ -60,8 +57,6 @@ src/
 
 ## Environment Variables
 - `VINTED_DOMAIN` - Vinted domain to use (default: `www.vinted.fr`)
-- `VINTED_EMAIL` - Vinted account email (optional, enables authenticated tools)
-- `VINTED_PASSWORD` - Vinted account password (required if `VINTED_EMAIL` is set)
 - `PUPPETEER_EXECUTABLE_PATH` - Custom Chrome/Chromium path for Puppeteer (optional)
 - `BROWSER_TIMEOUT_MS` - Timeout for Cloudflare challenge resolution in ms (default: `30000`)
 
@@ -69,7 +64,7 @@ src/
 
 ### Current State
 - **Iteration**: 5 (polish & distribution complete)
-- **Status**: 7 tools (6 read-only + 1 authenticated), Puppeteer-based sessions, Cloudflare bypass, HTML scraping, npx-ready, CI/CD
+- **Status**: 6 read-only tools, Puppeteer-based sessions, Cloudflare bypass, HTML scraping, npx-ready, CI/CD
 - **Next**: Additional Vinted domains auto-detection, structured error codes, cart/bundle features
 
 ### Key Decisions
@@ -80,9 +75,6 @@ src/
 - In-flight request deduplication prevents thundering herd
 - Response bodies consumed on retry to prevent connection leaks
 - Puppeteer with stealth plugin to bypass Cloudflare challenges
-- Auth via headless browser login (supports two-step email/password flow)
-- Authenticated tools conditionally registered only when credentials are configured
-- 2FA/captcha not supported — login timeout throws explicit error
 - Item details fetched via HTML scraping (JSON-LD + RSC plugins) — Vinted JSON API returns 403
 - Wardrobe endpoint `/wardrobe/{id}/items` used instead of `/users/{id}/items`
 - Shared `mcpError()` utility for consistent error responses across all tools
@@ -93,5 +85,4 @@ src/
 - Each tool in its own file with `register*Tool(server)` pattern
 - Shared `mcpError()` utility replaces per-tool error boilerplate
 - `getHtml()` on VintedClient for page scraping with same session/cache/retry guarantees as JSON API
-- SessionProvider interface with two implementations: BrowserSessionProvider (anonymous) and AuthenticatedSessionProvider (login)
-- Auth config validated with Zod, cached after first read, frozen for immutability
+- SessionProvider interface with BrowserSessionProvider implementation (Cloudflare bypass)
