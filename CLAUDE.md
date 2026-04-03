@@ -68,9 +68,9 @@ src/
 ## Memory (updated each iteration)
 
 ### Current State
-- **Iteration**: 4 (API hardening & HTML scraping complete)
-- **Status**: 7 tools (6 read-only + 1 authenticated), Puppeteer-based sessions, Cloudflare bypass, HTML scraping for item details
-- **Next**: Polish & distribution (README, Docker, npx, CI/CD)
+- **Iteration**: 5 (polish & distribution complete)
+- **Status**: 7 tools (6 read-only + 1 authenticated), Puppeteer-based sessions, Cloudflare bypass, HTML scraping, npx-ready, CI/CD
+- **Next**: Additional Vinted domains auto-detection, structured error codes, cart/bundle features
 
 ### Key Decisions
 - Cookie regex uses `_vinted_\w+_session` to support all Vinted domains

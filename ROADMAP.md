@@ -48,12 +48,12 @@ Provide a seamless, secure, and efficient MCP interface to Vinted, enabling AI a
 - [x] Unified `VintedSearchResponse` type (removed `VintedUserItemsResponse` and `VintedItemDetail`)
 - [x] Cache cleanup on `destroy()`
 
-### Iteration 5: Polish & Distribution (next)
-- [ ] Comprehensive README with setup instructions
-- [ ] MCP client configuration examples (Claude Desktop, Cursor, etc.)
-- [ ] Dockerfile for containerized deployment
-- [ ] npx support for zero-install usage
-- [ ] CI/CD with GitHub Actions
+### Iteration 5: Polish & Distribution ✅
+- [x] Comprehensive README with setup instructions
+- [x] MCP client configuration examples (Claude Desktop, Cursor, Claude Code CLI)
+- [x] Dockerfile for containerized deployment
+- [x] npx support for zero-install usage (`files` field, `prepublishOnly`, shebang)
+- [x] CI/CD with GitHub Actions (lint + build, Node 20/22 matrix)
 
 ### Future
 - [ ] Additional Vinted domains auto-detection
