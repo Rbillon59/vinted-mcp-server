@@ -33,7 +33,6 @@ Provide a seamless, secure, and efficient MCP interface to Vinted, enabling AI a
 - [x] Shared Puppeteer/stealth utilities (browser-utils.ts)
 - [x] `get_user_items` tool — browse user wardrobes
 - [x] `search_brands` tool — brand lookup
-- [x] `get_categories` tool — category tree
 
 ### Iteration 4: API Hardening & Scraping ✅
 - [x] HTML scraping for `get_item_details` (JSON API unavailable, replaced with JSON-LD + RSC plugin extraction)
@@ -71,5 +70,4 @@ Provide a seamless, secure, and efficient MCP interface to Vinted, enabling AI a
 | Cloudflare bypass | High (reliability) | High | P1 | ✅ Done |
 | User wardrobe | Medium | Low | P1 | ✅ Done |
 | Brand search | Low | Low | P2 | ✅ Done |
-| Categories | Low | Low | P2 | ✅ Done |
 | Docker | Medium | Low | P2 | Planned |

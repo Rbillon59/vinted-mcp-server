@@ -67,16 +67,6 @@ export interface VintedBrandSearchResponse {
   brands: VintedBrand[];
 }
 
-export interface VintedCatalog {
-  id: number;
-  title: string;
-  code: string;
-  catalogs: VintedCatalog[];
-}
-
-export interface VintedCatalogResponse {
-  catalogs: VintedCatalog[];
-}
 
 export interface VintedUserProfile {
   user: {

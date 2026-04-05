@@ -39,7 +39,7 @@ State-of-the-art MCP (Model Context Protocol) server for Vinted, enabling AI ass
 src/
   index.ts          # Entry point, MCP server setup
   server.ts         # Server configuration and tool registration
-  tools/            # MCP tool implementations (search, item, user, user-items, brands, categories)
+  tools/            # MCP tool implementations (search, item, user, user-items, brands)
   api/
     client.ts       # HTTP client (session, cache, rate limit, retry)
     session-provider.ts  # Browser-based session (Cloudflare bypass)
@@ -64,7 +64,7 @@ src/
 
 ### Current State
 - **Iteration**: 5 (polish & distribution complete)
-- **Status**: 6 read-only tools, Puppeteer-based sessions, Cloudflare bypass, HTML scraping, npx-ready, CI/CD
+- **Status**: 5 read-only tools, Puppeteer-based sessions, Cloudflare bypass, HTML scraping, npx-ready, CI/CD
 - **Next**: Additional Vinted domains auto-detection, structured error codes, cart/bundle features
 
 ### Key Decisions

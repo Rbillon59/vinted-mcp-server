@@ -4,7 +4,6 @@ import { registerItemTool } from "./tools/item.js";
 import { registerUserTool } from "./tools/user.js";
 import { registerUserItemsTool } from "./tools/user-items.js";
 import { registerBrandsTool } from "./tools/brands.js";
-import { registerCategoriesTool } from "./tools/categories.js";
 
 
 export function createServer(): McpServer {
@@ -19,7 +18,6 @@ export function createServer(): McpServer {
   registerUserTool(server);
   registerUserItemsTool(server);
   registerBrandsTool(server);
-  registerCategoriesTool(server);
 
   return server;
 }

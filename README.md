@@ -11,7 +11,6 @@ A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for int
 - **User profiles** — Seller ratings, reviews, item counts, and activity
 - **User items** — Browse all items listed by a specific user
 - **Brand search** — Find brand IDs for use in search filters
-- **Categories** — Browse the Vinted category tree
 - **Rate limiting** — Token bucket rate limiter to avoid API bans
 - **Caching** — In-memory LRU cache with TTL for fast repeated queries
 - **Retry logic** — Exponential backoff for transient errors
@@ -165,13 +164,6 @@ Search for brand names and get their IDs for use in search filters.
 |-----------|------|-------------|
 | `query` | string | Brand name to search (e.g., "Nike", "Zara") |
 
-### `get_categories`
-Browse the Vinted category tree.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `parent_id` | number | *(optional)* Parent category ID to list children of |
-
 ## Configuration
 
 | Environment Variable | Default | Description |
@@ -207,7 +199,6 @@ src/
     user.ts             # get_user_profile tool
     user-items.ts       # get_user_items tool
     brands.ts           # search_brands tool
-    categories.ts       # get_categories tool
   api/
     client.ts           # HTTP client (session, cache, rate limit, retry)
     session-provider.ts # Browser-based session (Cloudflare bypass)
